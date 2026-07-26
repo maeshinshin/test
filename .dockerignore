@@ -12,5 +12,6 @@ deploy
 README.md
 flake.lock
 flake.nix
-buf.gen.yaml
-buf.yaml
+# The backend image generates ConnectRPC code during the build.
+!buf.gen.yaml
+!buf.yaml

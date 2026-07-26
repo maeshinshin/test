@@ -7,7 +7,8 @@ import { RandomStreamer } from '@gen/proto/streaming/v1/streaming_pb'
  *
  * Priority:
  *  1. VITE_API_BASE_URL (set at build time, e.g. "https://api.example.com")
- *  2. window.location.origin (works with the Vite dev proxy and same-origin prod)
+ *  2. window.location.pathname-aware origin (works for /app/ same-origin prod
+ *     and for the Vite dev server, both of which serve the SPA under /app/).
  */
 function resolveBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_API_BASE_URL
@@ -15,7 +16,13 @@ function resolveBaseUrl(): string {
     return fromEnv.replace(/\/+$/, '')
   }
   if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin
+    // Strip everything after the SPA's mount point so the connect-web
+    // transport can append its own `/<package>.<Service>/<Method>` path.
+    const path = window.location.pathname
+    const mount = path.replace(/\/+$/, '').endsWith('/app')
+      ? '/app'
+      : path.match(/^(.*?\/app)(\/|$)/)?.[1] ?? ''
+    return window.location.origin + mount
   }
   return ''
 }

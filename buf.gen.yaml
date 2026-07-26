@@ -18,4 +18,4 @@ plugins:
   - remote: buf.build/bufbuild/es:v2.13.0
     out: frontend/gen
 inputs:
-  - directory: ./proto/app/v1/
+  - directory: .

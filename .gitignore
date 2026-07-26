@@ -7,6 +7,7 @@ backend/gen/
 
 # Tooling state
 .direnv/
+.serena/
 
 # Local secrets / env
 .env

@@ -8,6 +8,14 @@
 
 ARG GO_VERSION=1.26
 ARG NODE_VERSION=22
+ARG BUF_VERSION=1.50.0
+
+# ---------- protobuf / ConnectRPC code generation ----------
+FROM bufbuild/buf:${BUF_VERSION} AS proto
+WORKDIR /src
+COPY buf.yaml buf.gen.yaml ./
+COPY proto ./proto
+RUN buf generate
 
 # ---------- frontend ----------
 FROM node:${NODE_VERSION}-bookworm-slim AS frontend
@@ -24,6 +32,7 @@ WORKDIR /src
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 COPY backend/ ./
+COPY --from=proto /src/backend/gen ./gen
 # Drop the freshly-built frontend assets into the embed directory.
 COPY --from=frontend /src/backend/web/frontend_dist ./web/frontend_dist
 # Build a fully static binary.
