@@ -1,0 +1,5 @@
+# Keep this directory in git but ignore everything except the example
+# SDS config so private keys never get committed.
+*
+!server.yaml.example
+!.gitignore

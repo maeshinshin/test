@@ -1,0 +1,21 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/maeshinshin/test/backend/gen
+plugins:
+  - remote: buf.build/connectrpc/gosimple:v1.20.0
+    out: backend/gen
+    opt:
+      - paths=source_relative
+      - simple
+  # connectrpc/gosimple depends on protocolbuffers/go
+  - remote: buf.build/protocolbuffers/go:v1.36.11
+    out: backend/gen
+    opt:
+      - paths=source_relative
+  - remote: buf.build/bufbuild/es:v2.13.0
+    out: frontend/gen
+inputs:
+  - directory: ./proto/app/v1/
