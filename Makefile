@@ -1,5 +1,5 @@
 .PHONY: help \
-        deploy-help deploy-prereqs deploy-cert deploy-build deploy-up deploy-down deploy-logs deploy-ps deploy-restart deploy-curl-https
+        deploy-help deploy-prereqs deploy-cert deploy-build deploy-up deploy-up-existing-cert deploy-down deploy-logs deploy-ps deploy-restart deploy-curl-https
 
 # ---------- Deploy defaults (override via env) ----------
 DEPLOY_COMPOSE ?= deploy/docker-compose.nginx.yaml
@@ -25,6 +25,7 @@ deploy-help:  ## show deploy-specific help
 	@echo "  make deploy-cert       # (re)generate the self-signed TLS certificate"
 	@echo "  make deploy-build      # build the backend image"
 	@echo "  make deploy-up         # start backend + nginx + cert-init"
+	@echo "  make deploy-up-existing-cert # start using the existing cert files"
 	@echo "  make deploy-down       # stop the stack"
 	@echo "  make deploy-restart    # recreate nginx (e.g. after nginx.conf changes)"
 	@echo "  make deploy-ps / deploy-logs"
@@ -49,6 +50,11 @@ deploy-build:  ## build the backend image used by the stack
 	IMAGE_TAG='$(IMAGE_TAG)' $(COMPOSE) -f $(DEPLOY_COMPOSE) build --pull backend
 
 deploy-up: deploy-prereqs deploy-cert  ## start the stack (HTTPS) and stream logs
+	IMAGE_TAG='$(IMAGE_TAG)' $(COMPOSE) -f $(DEPLOY_COMPOSE) up -d --build
+
+deploy-up-existing-cert: deploy-prereqs  ## start the stack without replacing existing TLS certificate files
+	@test -f deploy/certs/fullchain.pem || { echo "deploy/certs/fullchain.pem is required"; exit 1; }
+	@test -f deploy/certs/privkey.pem || { echo "deploy/certs/privkey.pem is required"; exit 1; }
 	IMAGE_TAG='$(IMAGE_TAG)' $(COMPOSE) -f $(DEPLOY_COMPOSE) up -d --build
 
 deploy-restart:  ## recreate just the nginx container (e.g. after editing nginx.conf)

@@ -1,6 +1,6 @@
 # Docker Compose deployment (HTTPS)
 
-The `deploy/` directory ships a self-contained nginx + Go backend stack
+The `deploy/` directory ships a Docker-based nginx + Go backend stack
 that is driven by the `deploy-*` targets in the top-level `Makefile`.
 After `git clone`, the entire flow is:
 
@@ -20,6 +20,14 @@ make deploy-curl-https HOST=127.0.0.1 STREAM_SECS=2   # or HOST=localhost
 make deploy-logs
 ```
 
+If you manually replaced the certificate files in `deploy/certs/`, use the
+following target. It does not run `deploy-cert`, so the existing certificate
+and private key are preserved:
+
+```bash
+make deploy-up-existing-cert
+```
+
 `make deploy-up` runs, in order:
 
 1. `deploy-prereqs` — verifies `docker` + `docker compose` are usable.
@@ -30,8 +38,9 @@ make deploy-logs
    ```bash
    make deploy-cert HOST_SAN=203.0.113.10,localhost CERT_HOSTNAME=203.0.113.10
    ```
-3. `docker compose up -d --build` — starts `cert-init` (one-shot),
-   `backend` (Go server, local image), and `nginx` (TLS terminator +
+3. `docker compose up -d --build` — starts `cert-init` (one-shot; it skips
+   generation when certificate files already exist), `backend` (Go server,
+   local image), and `nginx` (TLS terminator +
    reverse proxy). nginx exposes `:80` (HTTP→HTTPS) and `:443`
    (HTTPS). Override with `HTTP_PORT=8080 HTTPS_PORT=8443`.
 
@@ -49,6 +58,7 @@ build, not on the host.
 | `make deploy-cert`    | (Re)generate the self-signed cert.                        |
 | `make deploy-build`   | Build the backend image only.                             |
 | `make deploy-up`      | `prereqs` → `cert` → `up -d --build`.                      |
+| `make deploy-up-existing-cert` | Start with the existing certificate files; do not regenerate them. |
 | `make deploy-restart` | Recreate the nginx container (e.g. after editing config).  |
 | `make deploy-down`    | Stop the stack.                                            |
 | `make deploy-ps`      | Show container status.                                     |
@@ -68,19 +78,29 @@ build, not on the host.
 | `IMAGE_TAG`     | `local`                  | Tag applied to the locally built backend image.        |
 | `DEPLOY_COMPOSE`| `deploy/docker-compose.nginx.yaml` | Compose file to use.                      |
 
-`HOST_SAN` accepts DNS names and IP addresses; the `cert-init` script
-classifies each entry (`*:DNS:*` vs `IP:...`) and emits a SAN list
-compatible with the embedded Go TLS handshake.
+`HOST_SAN` accepts comma-separated DNS names and IP addresses. The
+certificate generator emits DNS names as `DNS:...` and IPv4 addresses as
+`IP:...` in the certificate SAN. Entries may also be supplied explicitly
+with an OpenSSL prefix, such as `DNS:example.com` or `IP:127.0.0.1`.
 
 ## Using a real certificate
 
 Drop your own `fullchain.pem` and `privkey.pem` into `deploy/certs/`
-(overwriting the self-signed files), then reload nginx without
-rebuilding:
+(overwriting the self-signed files), then start or reload nginx without
+regenerating the certificate:
 
 ```bash
+make deploy-up-existing-cert
 make deploy-restart
 ```
+
+`deploy-up-existing-cert` verifies that both files exist and starts the
+stack without running `deploy-cert`. `deploy-restart` only recreates nginx,
+which is useful when the stack is already running.
+
+The nginx configuration contains an ACME HTTP-01 challenge location, but
+this Compose setup does not mount an ACME webroot or run certbot. Additional
+volume and renewal configuration is required before using ACME renewal.
 
 ## Verifying the stack
 

@@ -14,15 +14,23 @@ fi
 
 mkdir -p "$OUT_DIR"
 
-# Build the SAN list. Supports both DNS and IP entries, comma separated.
+# Build the SAN list. Supports DNS names and IP addresses, comma separated.
 SAN_ENTRIES="DNS:$CN"
 OLD_IFS="$IFS"
 IFS=','
 for entry in $CERT_SAN; do
+  entry=$(printf '%s' "$entry" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  [ -n "$entry" ] || continue
   case "$entry" in
-    *:*) SAN_ENTRIES="$SAN_ENTRIES,$entry" ;;
-    *)   SAN_ENTRIES="$SAN_ENTRIES,DNS:$entry" ;;
+    DNS:*|IP:*) san_entry="$entry" ;;
+    *)
+      case "$entry" in
+        *[!0-9.]*|*.*.*.*.*) san_entry="DNS:$entry" ;;
+        *) san_entry="IP:$entry" ;;
+      esac
+      ;;
   esac
+  SAN_ENTRIES="$SAN_ENTRIES,$san_entry"
 done
 IFS="$OLD_IFS"
 
