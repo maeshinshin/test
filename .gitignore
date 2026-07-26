@@ -1,0 +1,13 @@
+# Build / generated
+bin/
+dist/
+backend/web/frontend_dist/
+frontend/dist/
+backend/gen/
+
+# Tooling state
+.direnv/
+
+# Local secrets / env
+.env
+.env.local

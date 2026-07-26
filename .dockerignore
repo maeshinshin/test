@@ -1,0 +1,16 @@
+.git
+.gitignore
+.direnv
+.envrc
+node_modules
+**/node_modules
+frontend/dist
+bin
+backend/web/frontend_dist
+Makefile
+deploy
+README.md
+flake.lock
+flake.nix
+buf.gen.yaml
+buf.yaml

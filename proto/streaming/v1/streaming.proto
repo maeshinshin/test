@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package streaming.v1;
+
+option go_package = "github.com/example/streaming/api/streaming/v1;streamingv1";
+
+// Server streaming service.
+// Client sends a StartRequest (currently empty), server streams RandomChar
+// messages for ~1 minute, then closes.
+service RandomStreamer {
+  rpc StreamRandom(StartRequest) returns (stream RandomChar);
+}
+
+message StartRequest {}
+
+message RandomChar {
+  // A single random character emitted by the server.
+  string ch = 1;
+  // Monotonically increasing sequence number, starting from 1.
+  uint64 seq = 2;
+  // Server-side timestamp (RFC3339) when the char was emitted.
+  string emitted_at = 3;
+}

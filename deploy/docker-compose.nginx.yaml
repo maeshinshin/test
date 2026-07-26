@@ -1,0 +1,77 @@
+# Compose stack: backend (Go) + nginx reverse proxy, with a self-signed
+# cert generated at first start.
+#
+# Usage:
+#   SERVER_NAME="example.com,api.example.com" \
+#   SERVER_IP="203.0.113.10,127.0.0.1" \
+#   HTTP_PORT=80 HTTPS_PORT=443 \
+#   docker compose -f deploy/docker-compose.nginx.yaml up -d
+#
+# To use a real cert instead of the self-signed one, drop fullchain.pem
+# and privkey.pem into deploy/certs/ and comment out the `cert-init`
+# service. (When those files exist, cert-init becomes a no-op because
+# the openssl command will overwrite only if the files are missing.)
+
+services:
+  cert-init:
+    image: alpine:3.20
+    volumes:
+      - ./certs:/work
+    environment:
+      SERVER_NAME: "${SERVER_NAME:-localhost,example.com}"
+      SERVER_IP:   "${SERVER_IP:-127.0.0.1}"
+      DAYS:        "${DAYS:-365}"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        if [ -f /work/fullchain.pem ] && [ -f /work/privkey.pem ]; then
+          echo "Cert already present, skipping generation."
+          exit 0
+        fi
+        apk add --no-cache openssl bash >/dev/null
+        /work/generate-selfsigned.sh
+    restart: "no"
+
+  backend:
+    # Image is pulled from GHCR; override with IMAGE_TAG=<tag> if needed.
+    image: ghcr.io/maeshinshin/test:${IMAGE_TAG:-dev}
+    restart: unless-stopped
+    pull_policy: always
+    expose:
+      - "8080"
+    command:
+      - "-a"
+      - "0.0.0.0"
+      - "-p"
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      cert-init:
+        condition: service_completed_successfully
+      backend:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/letsencrypt/live/example.com:ro
+      - ./acme:/var/www/acme:ro
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge

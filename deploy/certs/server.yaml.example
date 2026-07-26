@@ -1,0 +1,13 @@
+# SDS resource for the server certificate.
+#
+# Rename to server.yaml after placing fullchain.pem and privkey.pem in
+# the same directory. The Envoy config in deploy/envoy.yaml references
+# this file at /etc/envoy/certs/server.yaml.
+resources:
+  - "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.Secret
+    name: server_cert
+    tls_certificate:
+      certificate_chain:
+        filename: /etc/envoy/certs/fullchain.pem
+      private_key:
+        filename: /etc/envoy/certs/privkey.pem
